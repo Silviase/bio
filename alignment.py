@@ -5,18 +5,20 @@ import tkinter as tk
 
 sys.setrecursionlimit(10000)
 
+# 自由に設定してよい部分
 __gap_penalty__ = -1
 __match_score__ = 1
 __unmatch_score__ = -3
 memory_score = {0: 0}
 memory_trace = {}
-
 __max_length__ = 10
 
 
-# 何文字目まで見たかをHashにする
-# List[int]だとhash化できないのでDictionaryのKeyに出来ない
 def hash_code(inspect: Sequence[int]) -> int:
+    """それぞれの文字列の何文字目まで見たかをHash化する関数
+    Note:
+        List[int]だとhash化できないのでDictionaryのKeyに出来ないため導入
+    """
     res = 0
     for i in range(len(inspect)):
         res = res * (__max_length__ + 1) + inspect[i]
@@ -24,49 +26,49 @@ def hash_code(inspect: Sequence[int]) -> int:
 
 
 def print_result(frame: tk.Frame):
+    """ アラインメントの結果を出力する関数
+    """
     global test_ins
     test_trace_hashed = trace_back(hash_code(test_ins))
-    # print(test_trace_hashed)
     test_trace_unhashed = unhash_trace(test_trace_hashed, len(test_ins))
-    # print(test_trace_unhashed)
     for i in range(len(test_trace_unhashed[0])):
         aligned_dna = ""
         for j in range(1, len(test_trace_unhashed)):
             if test_trace_unhashed[j][i] > test_trace_unhashed[j - 1][i]:
                 aligned_dna += test_nuc[i][test_trace_unhashed[j - 1][i]]
-                # print(test_nuc[i][test_trace_unhashed[j - 1][i]], end="")
             else:
                 aligned_dna += "_"
-                # print("_", end="")
         aligned_dna_label = tk.Label(frame, text=aligned_dna, font="Consolas")
         aligned_dna_label.grid(row=i + 3)
-        # print()
     frame.grid(row=2, sticky=tk.W + tk.E)
     return
 
 
 def destroy_child(frame: tk.Frame):
+    """ウィジェットが自分自身が持つ子ウィジェットをすべて消去する関数
+    """
     children = frame.winfo_children()
     for child in children:
         child.destroy()
 
 
 def do_alignment():
+    """DP Alignment!のボタンを押すと走る関数
+    """
     global test_nuc, test_ins, memory_trace, memory_score, result_frame
     memory_trace = {}
     memory_score = {0: 0}
 
-    # 前回の結果の削除
+    # 前回の結果のラベルの破棄
     destroy_child(result_frame)
-
+    # スコアの計算
     max_score = dynamic_alignment(test_nuc, test_ins)
-
-    # ラベルの作成
+    # 新規ラベルの作成
     label = tk.Label(result_frame, text="Score->" + str(max_score))
     label.grid(row=0)
     alignment_result = tk.Label(result_frame, text="Result below")
     alignment_result.grid(row=1, sticky=tk.N)
-
+    # 結果ラベルの作成
     print_result(result_frame)
 
     return
@@ -82,7 +84,7 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
         # print(str(inspect) + " not found")
 
     max_score = -1e9
-    # 各bitについて計算を行うbit全探索をする. O(2^N)
+    # 各bitについて計算を行うbit全探索をする.
     for bit in range(1, 1 << len(inspect)):
         f = False
         previous_characters = copy.deepcopy(inspect)
@@ -95,7 +97,8 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
         if f:
             continue
 
-        basic_score = dynamic_alignment(nucleotide_sequence, previous_characters)
+        basic_score = dynamic_alignment(
+            nucleotide_sequence, previous_characters)
         for i in range(0, len(inspect)):
             for j in range(i + 1, len(inspect)):
                 if (bit & (1 << i)) > 0 and (bit & (1 << j)) > 0:
@@ -114,9 +117,6 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
             memory_trace[hashed_inspect] = hash_code(previous_characters)
 
     memory_score[hashed_inspect] = max_score
-
-    with open('output.txt', 'a', encoding='utf-8') as f:
-        f.write("put " + str(inspect) + ", score = " + str(max_score) + "\n")
 
     return memory_score[hashed_inspect]
 
@@ -170,7 +170,7 @@ root = tk.Tk()
 root.title("Alignment")
 root.geometry("400x400")
 
-add_frame = tk.Frame(root, width=400, height=100, bg="cyan")
+add_frame = tk.Frame(root, width=400, height=100)
 
 add_text_box = tk.Entry(add_frame)
 add_text_box.grid(row=0, column=0)
@@ -181,7 +181,7 @@ delete_dna_button.grid(row=0, column=2)
 add_frame.grid(row=0, column=0, sticky=tk.W + tk.E)
 
 # 二段目 : 現在の様子を示す
-current_frame = tk.Frame(root, width=400, height=100, bg="navy")
+current_frame = tk.Frame(root, width=400, height=100)
 current_nuc_label = tk.Label(current_frame, text=str(test_nuc))
 current_nuc_label.grid()
 button = tk.Button(current_frame, text="DP Alignment!", command=do_alignment)
@@ -189,7 +189,7 @@ button.grid()
 current_frame.grid(row=1, column=0)
 
 # 三段目 : 結果を示すフレーム
-result_frame = tk.Frame(root, width=400, height=100, bg="green")
+result_frame = tk.Frame(root, width=400, height=100)
 
 # ----------------
 if __name__ == '__main__':
