@@ -45,21 +45,27 @@ def print_result(frame: tk.Frame):
     return
 
 
+def destroy_child(frame: tk.Frame):
+    children = frame.winfo_children()
+    for child in children:
+        child.destroy()
+
+
 def do_alignment():
-    global test_nuc, test_ins, memory_trace
+    global test_nuc, test_ins, memory_trace, memory_score, result_frame
     memory_trace = {}
+    memory_score = {0: 0}
+
+    # 前回の結果の削除
+    destroy_child(result_frame)
+
     max_score = dynamic_alignment(test_nuc, test_ins)
 
-    # 結果を示すフレーム
-    result_frame = tk.Frame(root, width=400, height=100, bg="green")
     # ラベルの作成
     label = tk.Label(result_frame, text="Score->" + str(max_score))
     label.grid(row=0)
     alignment_result = tk.Label(result_frame, text="Result below")
     alignment_result.grid(row=1, sticky=tk.N)
-
-    dynamic_alignment(test_nuc, test_ins)
-    # print(score)
 
     print_result(result_frame)
 
@@ -79,17 +85,17 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
     # 各bitについて計算を行うbit全探索をする. O(2^N)
     for bit in range(1, 1 << len(inspect)):
         f = False
-        trace_back = copy.deepcopy(inspect)
+        previous_characters = copy.deepcopy(inspect)
         for i in range(len(inspect)):
-            if trace_back[i] > 0 and (bit & (1 << i)) > 0:
-                trace_back[i] -= 1
-            elif trace_back[i] == 0 and (bit & (1 << i)) > 0:
+            if previous_characters[i] > 0 and (bit & (1 << i)) > 0:
+                previous_characters[i] -= 1
+            elif previous_characters[i] == 0 and (bit & (1 << i)) > 0:
                 f = True
                 break
         if f:
             continue
 
-        basic_score = dynamic_alignment(nucleotide_sequence, trace_back)
+        basic_score = dynamic_alignment(nucleotide_sequence, previous_characters)
         for i in range(0, len(inspect)):
             for j in range(i + 1, len(inspect)):
                 if (bit & (1 << i)) > 0 and (bit & (1 << j)) > 0:
@@ -105,7 +111,7 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
         if basic_score > max_score:
             # print(str(trace_back) + " to " + str(inspect) + " has updated, score is " + str(basic_score))
             max_score = basic_score
-            memory_trace[hashed_inspect] = hash_code(trace_back)
+            memory_trace[hashed_inspect] = hash_code(previous_characters)
 
     memory_score[hashed_inspect] = max_score
 
@@ -147,6 +153,14 @@ def add_dna():
     return
 
 
+def delete_dna():
+    global test_nuc, test_ins
+    test_nuc.pop()
+    test_ins.pop()
+    current_nuc_label["text"] = str(test_nuc)
+    return
+
+
 test_nuc = ["CTAGGAG", "CTGGAAG", "CGAGGAT", "ATAGGAG", ]
 test_ins = [len(test_nuc[i]) for i in range(len(test_nuc))]
 score = 0
@@ -158,10 +172,12 @@ root.geometry("400x400")
 
 add_frame = tk.Frame(root, width=400, height=100, bg="cyan")
 
-add_dna_button = tk.Button(add_frame, text="Add", command=add_dna)
 add_text_box = tk.Entry(add_frame)
 add_text_box.grid(row=0, column=0)
+add_dna_button = tk.Button(add_frame, text="Add", command=add_dna)
 add_dna_button.grid(row=0, column=1)
+delete_dna_button = tk.Button(add_frame, text="Delete", command=delete_dna)
+delete_dna_button.grid(row=0, column=2)
 add_frame.grid(row=0, column=0, sticky=tk.W + tk.E)
 
 # 二段目 : 現在の様子を示す
@@ -171,6 +187,9 @@ current_nuc_label.grid()
 button = tk.Button(current_frame, text="DP Alignment!", command=do_alignment)
 button.grid()
 current_frame.grid(row=1, column=0)
+
+# 三段目 : 結果を示すフレーム
+result_frame = tk.Frame(root, width=400, height=100, bg="green")
 
 # ----------------
 if __name__ == '__main__':
