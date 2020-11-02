@@ -3,15 +3,18 @@ from typing import Sequence
 import copy
 import tkinter as tk
 
+# 再帰が深くなるため深さの制限を緩める
 sys.setrecursionlimit(10000)
 
 # 自由に設定してよい部分
 __gap_penalty__ = -1
 __match_score__ = 1
 __unmatch_score__ = -3
+__max_length__ = 30
+
+# 色々なところからアクセスするグローバル変数
 memory_score = {0: 0}
 memory_trace = {}
-__max_length__ = 10
 
 
 def hash_code(inspect: Sequence[int]) -> int:
@@ -75,14 +78,17 @@ def do_alignment():
 
 
 def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]) -> int:
+    """アラインメントのスコアを求める
+    副作用としてトレースバックのDictionaryに書き込む
+    """
     # メモ化再帰して計算量を削減する
     hashed_inspect = hash_code(inspect)
     if hashed_inspect in memory_score:
         return memory_score[hashed_inspect]
     else:
         pass
-        # print(str(inspect) + " not found")
 
+    # 初期値は低く設定する
     max_score = -1e9
     # 各bitについて計算を行うbit全探索をする.
     for bit in range(1, 1 << len(inspect)):
@@ -95,6 +101,7 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
                 f = True
                 break
         if f:
+            # 無効な遡り方である
             continue
 
         basic_score = dynamic_alignment(
@@ -112,17 +119,18 @@ def dynamic_alignment(nucleotide_sequence: Sequence[str], inspect: Sequence[int]
                     basic_score += __gap_penalty__
 
         if basic_score > max_score:
-            # print(str(trace_back) + " to " + str(inspect) + " has updated, score is " + str(basic_score))
             max_score = basic_score
             memory_trace[hashed_inspect] = hash_code(previous_characters)
 
+    # スコアの書き込み
     memory_score[hashed_inspect] = max_score
 
     return memory_score[hashed_inspect]
 
 
-# memory_traceによって示された文字列のマッチと対応するHashの配列を返す
 def trace_back(to_trace_back: int) -> Sequence[int]:
+    """memory_traceによって示された文字列のマッチと対応するHashの配列を返す
+    """
     res = [to_trace_back]
     key = to_trace_back
     while key in memory_trace:
@@ -145,6 +153,8 @@ def unhash_trace(hashed_trace: Sequence[int], length: int) -> Sequence[Sequence[
 
 
 def add_dna():
+    """塩基配列をリストの末尾に追加する
+    """
     new_dna = add_text_box.get()
     global test_nuc, test_ins
     test_nuc.append(new_dna)
@@ -154,6 +164,8 @@ def add_dna():
 
 
 def delete_dna():
+    """リスト末尾の塩基配列を削除する
+    """
     global test_nuc, test_ins
     test_nuc.pop()
     test_ins.pop()
